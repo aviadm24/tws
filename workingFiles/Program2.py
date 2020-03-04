@@ -183,7 +183,7 @@ class TestWrapper(wrapper.EWrapper):
 
 
 class TestApp(TestWrapper, TestClient):
-    def __init__(self, stock, trail, amount):
+    def __init__(self, stock, trail, amount, delta, start_time):
         TestWrapper.__init__(self)
         TestClient.__init__(self, wrapper=self)
         # ! [socket_init]
@@ -197,10 +197,11 @@ class TestApp(TestWrapper, TestClient):
 
         self.price = 0
         self.priceList = []
-        self.start_time = dt.datetime.now()
+        self.delta = delta
+        self.start_time = start_time
         self.stock_dir = 'up'
         self.pos = 0
-        self.trailStopPrice = 0
+        self.StopPrice = 0
         self.filled = 0
         self.mktCapPrice = 0
         self.sold = False
@@ -420,33 +421,7 @@ class TestApp(TestWrapper, TestClient):
     # ! [updateportfolio]
 
 
-    @iswrapper
-    # ! [familyCodes]
-    def familyCodes(self, familyCodes: ListOfFamilyCode):
-        super().familyCodes(familyCodes)
-        print("Family Codes:")
-        for familyCode in familyCodes:
-            print("FamilyCode.", familyCode)
-    # ! [familyCodes]
 
-    @iswrapper
-    # ! [pnl]
-    def pnl(self, reqId: int, dailyPnL: float,
-            unrealizedPnL: float, realizedPnL: float):
-        super().pnl(reqId, dailyPnL, unrealizedPnL, realizedPnL)
-        # print("Daily PnL. ReqId:", reqId, "DailyPnL:", dailyPnL,
-        #       "UnrealizedPnL:", unrealizedPnL, "RealizedPnL:", realizedPnL)
-    # ! [pnl]
-
-    @iswrapper
-    # ! [pnlsingle]
-    def pnlSingle(self, reqId: int, pos: int, dailyPnL: float,
-                  unrealizedPnL: float, realizedPnL: float, value: float):
-        super().pnlSingle(reqId, pos, dailyPnL, unrealizedPnL, realizedPnL, value)
-        # print("Daily PnL Single. ReqId:", reqId, "Position:", pos,
-        #       "DailyPnL:", dailyPnL, "UnrealizedPnL:", unrealizedPnL,
-        #       "RealizedPnL:", realizedPnL, "Value:", value)
-    # ! [pnlsingle]
 
     def marketDataTypeOperations(self):
         # ! [reqmarketdatatype]
@@ -577,12 +552,25 @@ class TestApp(TestWrapper, TestClient):
         if len(self.priceList) == 2:
             self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
                             Orders.MarketOrder("BUY", self.amount/2))
+            self.StopPrice = self.price - self.trail
 
-        margin = check_margin()
-        if margin == stop_margin:
-            place_opposit_order()
-        else:
-            pass
+        if self.pos >= 0:
+            if self.price <= self.StopPrice:
+                self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                Orders.MarketOrder("SELL", self.amount))
+                self.StopPrice = self.price + self.trail
+
+        if self.pos <= 0:
+            if self.price >= self.StopPrice:
+                self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                Orders.MarketOrder("BUY", self.amount))
+                self.StopPrice = self.price - self.trail
+
+        current_time = dt.datetime.now()
+        timepast = current_time - self.start_time
+        if timepast.minutes > self.delta:
+            self.start_time = dt.datetime.now()
+            self.StopPrice = self.price - self.trail
 
 
         self.priceList.append(price)

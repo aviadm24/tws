@@ -57,7 +57,7 @@ def SetupLogger():
     logger.addHandler(console)
 
 
-def main(stock, trail, amount):
+def main(stock, trail, amount, delta, start_time):
     SetupLogger()
     logging.debug("now is %s", datetime.datetime.now())
     logging.getLogger().setLevel(logging.ERROR)
@@ -84,7 +84,7 @@ def main(stock, trail, amount):
     VolumeCondition.__setattr__ = utils.setattr_log
 
     try:
-        app = TestApp(stock, trail, amount)
+        app = TestApp(stock, trail, amount, delta, start_time)
         if args.global_cancel:
             app.globalCancelOnly = True
         # ! [connect]
@@ -115,6 +115,7 @@ layout = [
                  sg.Slider(range=(0.01, 0.05), resolution=0.01, orientation='v', size=(5, 20), default_value=0.02, key='trail'),
                  sg.Slider(range=(100, 1000), resolution=100, orientation='v', size=(5, 20), default_value=200, key='amount'),
                  ]])],
+            [sg.Text('Enter delta time in minutes'), sg.Input('', key='delta')],
             [sg.Button('Start')],
             [sg.ProgressBar(1, orientation='h', size=(20, 20), key='progress')],
             [sg.Button('Cancel')]
@@ -129,11 +130,12 @@ while True:
     print('vals: ', values)
 
     if event == 'Start':
-        stock, trail, amount = values['stock'], values['trail'], values['amount']
+        stock, trail, amount, delta = values['stock'], values['trail'], values['amount'], values['delta']
+        start_time = dt.datetime.now()
         #  https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_Multithreaded_Multiple_Threads.py
         thread_id = threading.Thread(
             target=main,
-            args=(stock, trail, amount),
+            args=(stock, trail, amount, delta, start_time),
             daemon=True)
         app = thread_id.start()
 
