@@ -3,6 +3,7 @@ import json
 import datetime as dt
 import os
 import threading
+import queue
 import traceback
 import argparse
 import datetime
@@ -33,7 +34,7 @@ from ibapi.account_summary_tags import *
 
 from Contracts import Contracts
 from Orders import Orders
-from Program import TestApp
+from Program2 import TestApp
 RUNTIME = 10
 
 
@@ -57,7 +58,7 @@ def SetupLogger():
     logger.addHandler(console)
 
 
-def main(stock, trail, amount, delta, start_time):
+def main(stock, trail, amount, delta, start_time, gui_queue):
     SetupLogger()
     logging.debug("now is %s", datetime.datetime.now())
     logging.getLogger().setLevel(logging.ERROR)
@@ -84,7 +85,7 @@ def main(stock, trail, amount, delta, start_time):
     VolumeCondition.__setattr__ = utils.setattr_log
 
     try:
-        app = TestApp(stock, trail, amount, delta, start_time)
+        app = TestApp(stock, trail, amount, delta, start_time, gui_queue)
         if args.global_cancel:
             app.globalCancelOnly = True
         # ! [connect]
@@ -117,6 +118,7 @@ layout = [
                  ]])],
             [sg.Text('Enter delta time in minutes'), sg.Input('', key='delta')],
             [sg.Button('Start')],
+            [sg.Button('Update Stop')],
             [sg.ProgressBar(1, orientation='h', size=(20, 20), key='progress')],
             [sg.Button('Cancel')]
          ]
@@ -128,20 +130,21 @@ while True:
 
     print('events: ', event)
     print('vals: ', values)
-
+    gui_queue = queue.Queue()
     if event == 'Start':
         stock, trail, amount, delta = values['stock'], values['trail'], values['amount'], values['delta']
         start_time = dt.datetime.now()
         #  https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_Multithreaded_Multiple_Threads.py
         thread_id = threading.Thread(
             target=main,
-            args=(stock, trail, amount, delta, start_time),
+            args=(stock, trail, amount, delta, start_time, gui_queue),
             daemon=True)
         app = thread_id.start()
 
         print(stock, trail, amount)
         # main(stock, trail, amount)
-
+    if event == 'Update Stop':
+        gui_queue.put('update')
     if event in (None, 'Cancel'):  # if user closes window or clicks cancel
         try:
             #  https: // stackoverflow.com / questions / 42867933 / ib - api - python - sample -not -using - ibpy

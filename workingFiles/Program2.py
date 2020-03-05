@@ -11,6 +11,7 @@ import inspect
 import logging
 import time
 import os.path
+import queue
 
 from ibapi import wrapper
 from ibapi import utils
@@ -183,7 +184,7 @@ class TestWrapper(wrapper.EWrapper):
 
 
 class TestApp(TestWrapper, TestClient):
-    def __init__(self, stock, trail, amount, delta, start_time):
+    def __init__(self, stock, trail, amount, delta, start_time, gui_queue):
         TestWrapper.__init__(self)
         TestClient.__init__(self, wrapper=self)
         # ! [socket_init]
@@ -206,6 +207,7 @@ class TestApp(TestWrapper, TestClient):
         self.mktCapPrice = 0
         self.sold = False
         self.bought = False
+        self.gui_queue = gui_queue
 
         self.stock = stock
         self.trail = trail
@@ -558,21 +560,31 @@ class TestApp(TestWrapper, TestClient):
             if self.price <= self.StopPrice:
                 self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
                                 Orders.MarketOrder("SELL", self.amount))
-                self.StopPrice = self.price + self.trail
+                self.StopPrice = self.price - self.trail
 
         if self.pos <= 0:
             if self.price >= self.StopPrice:
                 self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
                                 Orders.MarketOrder("BUY", self.amount))
-                self.StopPrice = self.price - self.trail
+                self.StopPrice = self.price + self.trail
 
         current_time = dt.datetime.now()
         timepast = current_time - self.start_time
-        if timepast.minutes > self.delta:
+        if timepast.seconds/60 > float(self.delta):
             self.start_time = dt.datetime.now()
             self.StopPrice = self.price - self.trail
 
+        try:
+            message = self.gui_queue.get_nowait()  # see if something has been posted to Queue
+            print("message: ".format(message))
+            if message == 'update':
+                if self.pos >= 0:
+                    self.StopPrice = self.price - self.trail
+                else:
+                    self.StopPrice = self.price + self.trail
 
+        except queue.Empty:  # get_nowait() will get exception when Queue is empty
+            message = None  # nothing in queue so do nothing
         self.priceList.append(price)
 
 
