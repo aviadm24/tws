@@ -215,6 +215,9 @@ class TestApp(TestWrapper, TestClient):
         self.nextSellingPrice = 0
         self.id = 0
         self.status = ''
+        self.message = ''
+        self.first_buy = False
+        self.second_buy = False
 
     def dumpTestCoverageSituation(self):
         for clntMeth in sorted(self.clntMeth2callCount.keys()):
@@ -383,7 +386,9 @@ class TestApp(TestWrapper, TestClient):
         self.mktCapPrice = mktCapPrice
         self.id = orderId
         self.status = status
-        print("order: ", orderId, "status: ", status)
+
+        # print("order: ", orderId, "status: ", status)
+
         # print("OrderStatus. Id:", orderId, "Status:", status, "Filled:", filled,
         #       "Remaining:", remaining, "AvgFillPrice:", avgFillPrice,
         #       "PermId:", permId, "ParentId:", parentId, "LastFillPrice:",
@@ -441,7 +446,7 @@ class TestApp(TestWrapper, TestClient):
     @printWhenExecuting
     def tickDataOperations_req(self):
         self.reqMarketDataType(MarketDataTypeEnum.DELAYED_FROZEN)
-        self.reqMktData(1000, Contracts.TQQQstock(), "", False, False, [])
+        self.reqMktData(1000, Contracts.AnyStock(self.stock), "", False, False, [])
         # Requesting real time market data
 
         # # ! [reqmktdata]
@@ -536,7 +541,9 @@ class TestApp(TestWrapper, TestClient):
     def position(self, account: str, contract: Contract, position: float,
                  avgCost: float):
         super().position(account, contract, position, avgCost)
-        self.pos = position
+        # print("contract: ", contract)
+        if contract.symbol == self.stock:
+            self.pos = position
         # print("Position.", "Account:", account, "Symbol:", contract.symbol, "SecType:",
         #       contract.secType, "Currency:", contract.currency,
         #       "Position:", position, "Avg cost:", avgCost)
@@ -548,44 +555,137 @@ class TestApp(TestWrapper, TestClient):
                   attrib: TickAttrib):
         super().tickPrice(reqId, tickType, price, attrib)
         self.price = price
-        # print("filled: ", self.filled)
-        # print("position: ", self.pos)
-
-        if len(self.priceList) == 2:
-            self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
-                            Orders.MarketOrder("BUY", self.amount/2))
-            self.StopPrice = self.price - self.trail
-
-        if self.pos >= 0:
-            if self.price <= self.StopPrice:
+        print("pos: ", self.pos)
+        if self.first_buy == False:  # can be fals on first buy or when putting position to zero on last buy!
+            if self.message == 'last_buy':
+                if self.pos > 0:
+                    self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                    Orders.MarketOrder("SELL", int(self.pos)))
+                else:
+                    print("pos: ", self.pos)
+                    self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                    Orders.MarketOrder("BUY", int(-1*self.pos)))
+                self.done = True
+                with open('update.txt', 'w') as file:
+                    file.write('')
+            else:
                 self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
-                                Orders.MarketOrder("SELL", self.amount))
+                                Orders.MarketOrder("BUY", self.amount/2))
                 self.StopPrice = self.price - self.trail
+                print("first buy", self.amount/2)
+                print("first price: ", self.price)
+                self.first_buy = True
+        elif self.second_buy == False:
+            self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                            Orders.MarketOrder("SELL", self.amount))
+            self.second_buy = True
 
-        if self.pos <= 0:
-            if self.price >= self.StopPrice:
-                self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
-                                Orders.MarketOrder("BUY", self.amount))
-                self.StopPrice = self.price + self.trail
+        elif self.pos == self.amount / 2:  # long position
+            # print("filled: {}, sold: {}".format(self.filled, self.sold))
+            # if self.filled == self.amount and self.sold == False:
+            if self.sold == False:  # change position even if there wasn't a full fill
+                # print("price {}, stop {}".format(self.price, self.StopPrice))
+                if self.price <= self.StopPrice:
+                    # self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                 Orders.MarketOrder("SELL", self.amount))
+
+                    # self.StopPrice = self.StopPrice - self.trail
+                    print("SELL update stop price: ", self.StopPrice)
+                    print('fill: ', self.filled)
+                    self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                    Orders.MarketOrder("SELL", self.filled))
+                    # if self.filled < self.amount:
+                    #     self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                     Orders.MarketOrder("SELL", self.amount - self.filled))
+                    # else:
+                    #     self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                     Orders.MarketOrder("SELL", self.amount))
+                    #     print("SELL before fill: ", self.amount - self.filled)
+                    self.sold = True
+                    self.bought = False
+                    self.filled = 0
+            # seems like I don't need this part now that i dont waiyt for full fill
+            elif self.filled == self.amount/2 and self.sold == False:  # second buy
+                print("price {}, stop {}".format(self.price, self.StopPrice))
+                if self.price <= self.StopPrice:
+                    self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                    Orders.MarketOrder("SELL", self.amount))
+                    # self.StopPrice = self.StopPrice - self.trail
+                    print("SELL  {} update stop price: {}".format(self.amount, self.StopPrice))
+
+                    self.sold = True
+                    self.bought = False
+                    self.filled = 0
+        elif self.pos == -1 * self.amount / 2:  # short position
+            # print("filled: {}, sold: {}".format(self.filled, self.sold))
+            # if self.filled == self.amount and self.bought == False:
+            if self.bought == False:  # change position even if there wasn't a full fill
+                # print("price {}, stop {}".format(self.price, self.StopPrice))
+                if self.price >= self.StopPrice:
+                    # self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                 Orders.MarketOrder("BUY", self.amount))
+                                        # self.StopPrice = self.StopPrice + self.trail
+                    print("BUY update stop price: ", self.StopPrice)
+                    print('fill: ', self.filled)
+                    self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                                    Orders.MarketOrder("BUY", self.filled))
+                    # if self.filled < self.amount:
+                    #     self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                     Orders.MarketOrder("BUY", self.amount - self.filled))
+                    #     print("BUY before fill: ", self.amount - self.filled)
+                    # else:
+                    #     self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+                    #                     Orders.MarketOrder("BUY", self.amount))
+                    self.sold = False
+                    self.bought = True
+                    self.filled = 0
+        # elif self.pos == 0:
+        #     print('second buy: ', self.second_buy)
+        #     if self.second_buy == False:
+        #         print('second buy SELL : ', self.amount / 2)
+        #         self.placeOrder(self.nextOrderId(), Contracts.AnyStock(self.stock),
+        #                         Orders.MarketOrder("SELL", 100))
+        #         self.second_buy = True
+
 
         current_time = dt.datetime.now()
         timepast = current_time - self.start_time
+        # print("seconds: ", timepast.seconds/60)
         if timepast.seconds/60 > float(self.delta):
             self.start_time = dt.datetime.now()
-            self.StopPrice = self.price - self.trail
+            if self.pos >= 0:
+                print("filled: ", self.filled)
+                self.StopPrice = self.price - self.trail
+                print("##############################################Time driven update stop price: ", self.StopPrice)
+            else:
+                self.StopPrice = self.price + self.trail
+                print("##############################################Time driven update stop price: ", self.StopPrice)
 
         try:
-            message = self.gui_queue.get_nowait()  # see if something has been posted to Queue
-            print("message: ".format(message))
-            if message == 'update':
+            with open('update.txt', 'r') as file:
+                self.message = file.read()
+
+            # message = self.gui_queue.get_nowait()  # see if something has been posted to Queue
+            # message = self.gui_queue.get()
+            # print("*************************message**************************: {}", message)
+            if self.message == 'update':
                 if self.pos >= 0:
                     self.StopPrice = self.price - self.trail
+                    print("MANUALE update stop price: ", self.StopPrice)
                 else:
                     self.StopPrice = self.price + self.trail
+                    print("MANUALE update stop price: ", self.StopPrice)
+                with open('update.txt', 'w') as file:
+                    file.write('')
+            elif self.message == 'last_buy':
+                self.first_buy = False
 
-        except queue.Empty:  # get_nowait() will get exception when Queue is empty
-            message = None  # nothing in queue so do nothing
+        except:  # get_nowait() will get exception when Queue is empty
+            pass
+            # print("no message")  # message = None  # nothing in queue so do nothing
+
         self.priceList.append(price)
+        # print("price list: ", self.priceList)
 
 
     @iswrapper

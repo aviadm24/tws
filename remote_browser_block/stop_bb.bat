@@ -1,0 +1,1 @@
+CMD /K START "" "browser_block.py"

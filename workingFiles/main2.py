@@ -35,7 +35,12 @@ from ibapi.account_summary_tags import *
 from Contracts import Contracts
 from Orders import Orders
 from Program2 import TestApp
+
+# https://github.com/jseparovic/DASTraderScripts
+
 RUNTIME = 10
+with open('update.txt', 'w') as file:
+    file.write('')
 
 
 def SetupLogger():
@@ -70,7 +75,7 @@ def main(stock, trail, amount, delta, start_time, gui_queue):
                                dest="global_cancel", default=False,
                                help="whether to trigger a globalCancel req")
     args = cmdLineParser.parse_args()
-    print("Using args", args)
+    # print("Using args", args)
     logging.debug("Using args %s", args)
     from ibapi import utils
     Order.__setattr__ = utils.setattr_log
@@ -91,8 +96,8 @@ def main(stock, trail, amount, delta, start_time, gui_queue):
         # ! [connect]
         app.connect("127.0.0.1", args.port, clientId=0)
         # ! [connect]
-        print("serverVersion:%s connectionTime:%s" % (app.serverVersion(),
-                                                      app.twsConnectionTime()))
+        # print("serverVersion:%s connectionTime:%s" % (app.serverVersion(),
+        #                                               app.twsConnectionTime()))
 
         # ! [clientrun]
         app.run()
@@ -111,14 +116,14 @@ sg.change_look_and_feel('DarkAmber')	# Add a touch of color
 layout = [
             [sg.Text('Yosef TWS GUI')],
             [sg.Text('Platform'), sg.Checkbox('TWS', key='tws', default=True)],
-            [sg.Input('QQQ', size=(20, 1), key='stock'),
+            [sg.Input('TQQQ', size=(20, 1), key='stock'),
              sg.Frame('Trail - Amount', [[
                  sg.Slider(range=(0.01, 0.05), resolution=0.01, orientation='v', size=(5, 20), default_value=0.02, key='trail'),
                  sg.Slider(range=(100, 1000), resolution=100, orientation='v', size=(5, 20), default_value=200, key='amount'),
                  ]])],
-            [sg.Text('Enter delta time in minutes'), sg.Input('', key='delta')],
+            [sg.Text('Enter delta time in minutes'), sg.Input('1', key='delta')],
             [sg.Button('Start')],
-            [sg.Button('Update Stop')],
+            [sg.Button('Update Stop'), sg.Button('Position zero')],
             [sg.ProgressBar(1, orientation='h', size=(20, 20), key='progress')],
             [sg.Button('Cancel')]
          ]
@@ -128,8 +133,8 @@ progress_bar = window['progress']
 while True:
     event, values = window.read()
 
-    print('events: ', event)
-    print('vals: ', values)
+    # print('events: ', event)
+    # print('vals: ', values)
     gui_queue = queue.Queue()
     if event == 'Start':
         stock, trail, amount, delta = values['stock'], values['trail'], values['amount'], values['delta']
@@ -144,7 +149,13 @@ while True:
         print(stock, trail, amount)
         # main(stock, trail, amount)
     if event == 'Update Stop':
-        gui_queue.put('update')
+        with open('update.txt', 'w') as file:
+            file.write('update')
+        # gui_queue.put('update2')
+        # print("queue: ", gui_queue.get())
+    if event == 'Position zero':
+        with open('update.txt', 'w') as file:
+            file.write('last_buy')
     if event in (None, 'Cancel'):  # if user closes window or clicks cancel
         try:
             #  https: // stackoverflow.com / questions / 42867933 / ib - api - python - sample -not -using - ibpy
