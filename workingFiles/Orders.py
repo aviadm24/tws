@@ -18,6 +18,17 @@ class Orders:
         return order
 
     @staticmethod
+    def Stop(action: str, quantity: float, stopPrice: float):
+        # ! [stop]
+        order = Order()
+        order.action = action
+        order.orderType = "STP"
+        order.auxPrice = stopPrice
+        order.totalQuantity = quantity
+        # ! [stop]
+        return order
+
+    @staticmethod
     def TrailingStop(action:str, quantity:float, trailingPercent:float,
                      trailStopPrice:float):
 
@@ -32,7 +43,7 @@ class Orders:
         return order
 
     @staticmethod
-    def NewTrailingStop(action:str, quantity:float, auxPrice:float,
+    def NewTrailingStop (action:str, quantity:float, auxPrice:float,
                      trailStopPrice:float):
 
         # ! [trailingstop]

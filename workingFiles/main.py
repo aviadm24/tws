@@ -103,7 +103,8 @@ def main(stock, trail, amount):
     return app
 
 
-sg.change_look_and_feel('DarkAmber')	# Add a touch of color
+sg.change_look_and_feel('DarkAmber')
+# Add a touch of color
 # All the stuff inside your window.
 # element.Widget = remi.gui.Slider(layout_orientation = remi.gui.Widget.LAYOUT_HORIZONTAL, default_value=element.DefaultValue, min=element.Range[0], max=element.Range[1],step=element.Resolution)
 layout = [

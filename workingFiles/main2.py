@@ -14,27 +14,13 @@ import logging
 import time
 import os.path
 
-from ibapi import wrapper
-from ibapi import utils
-from ibapi.client import EClient
-from ibapi.utils import iswrapper
-
 # types
-from ibapi.common import * # @UnusedWildImport
 from ibapi.order_condition import * # @UnusedWildImport
 from ibapi.contract import * # @UnusedWildImport
 from ibapi.order import * # @UnusedWildImport
-from ibapi.order_state import * # @UnusedWildImport
-from ibapi.execution import Execution
-from ibapi.execution import ExecutionFilter
-from ibapi.commission_report import CommissionReport
-from ibapi.ticktype import * # @UnusedWildImport
 from ibapi.tag_value import TagValue
-from ibapi.account_summary_tags import *
 
-from Contracts import Contracts
-from Orders import Orders
-from Program2 import TestApp
+from prog3 import TestApp
 
 # https://github.com/jseparovic/DASTraderScripts
 
@@ -111,12 +97,10 @@ def main(stock, trail, amount, delta, start_time, gui_queue):
 
 
 sg.change_look_and_feel('DarkAmber')	# Add a touch of color
-# All the stuff inside your window.
-# element.Widget = remi.gui.Slider(layout_orientation = remi.gui.Widget.LAYOUT_HORIZONTAL, default_value=element.DefaultValue, min=element.Range[0], max=element.Range[1],step=element.Resolution)
 layout = [
             [sg.Text('Yosef TWS GUI')],
             [sg.Text('Platform'), sg.Checkbox('TWS', key='tws', default=True)],
-            [sg.Input('TQQQ', size=(20, 1), key='stock'),
+            [sg.Input('QQQ', size=(20, 1), key='stock'),
              sg.Frame('Trail - Amount', [[
                  sg.Slider(range=(0.01, 0.05), resolution=0.01, orientation='v', size=(5, 20), default_value=0.02, key='trail'),
                  sg.Slider(range=(100, 1000), resolution=100, orientation='v', size=(5, 20), default_value=200, key='amount'),
@@ -164,12 +148,6 @@ while True:
             pass
         finally:
             break
-    # current_time = dt.datetime.now()
-    # timepast = current_time - self.start_time
-    # if timepast.seconds > 10:
-    #     print('--------------------------------{} past -------------------------------------------------'.
-    #           format(timepast.seconds))
-    #     app.done = True
 
 
 window.close()

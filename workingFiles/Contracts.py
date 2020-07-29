@@ -35,12 +35,22 @@ class Contracts:
         return contract
 
     @staticmethod
-    def TQQQstock():
+    def QQQ():
         contract = Contract()
         contract.symbol = "QQQ"
         contract.secType = "STK"
         contract.currency = "USD"
         contract.exchange = "SMART"
+        return contract
+
+    @staticmethod
+    def ULVR():
+        contract = Contract()
+        contract.symbol = "ULVR"
+        contract.secType = "STK"
+        contract.currency = "GBP"
+        contract.exchange = "LSE"
+        contract.primaryExchange = "LSE"
         return contract
 
     @staticmethod
@@ -51,6 +61,7 @@ class Contracts:
         contract.currency = "USD"
         contract.exchange = "SMART"
         return contract
+
 
 def Test():
     from ibapi.utils import ExerciseStaticMethods
